@@ -1,0 +1,37 @@
+name: Construire l'APK
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Décompresser le projet
+        run: unzip -o -q *.zip -d projet
+      - name: Compiler
+        run: |
+          cd projet/ClavierSenior
+          chmod +x gradlew
+          ./gradlew --no-daemon assembleRelease
+          cp app/build/outputs/apk/release/app-release.apk $GITHUB_WORKSPACE/ClavierSenior.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ClavierSenior-apk
+          path: ClavierSenior.apk
+      - name: Publier l'APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="build-${{ github.run_number }}"
+          gh release create "$TAG" ClavierSenior.apk --title "Clavier Senior ($TAG)" --notes "APK à installer" --latest
